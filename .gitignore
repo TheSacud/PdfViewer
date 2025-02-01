@@ -1,0 +1,36 @@
+# Node modules (raiz e subdiretórios)
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Arquivos de ambiente
+.env
+.env.local
+.env.*.local
+
+# Sistemas operacionais
+.DS_Store
+Thumbs.db
+
+# Diretórios de build/compilação
+# Backend (caso você gere algum build ou dist)
+backend/dist/
+backend/build/
+
+# Frontend (Vite gera o diretório dist)
+frontend/dist/
+frontend/.vite/
+
+# Diretórios de cache e arquivos temporários de IDEs/editores
+.vscode/
+.idea/
+
+# Cobertura de testes
+coverage/
+
+# Outros
+*.tsbuildinfo

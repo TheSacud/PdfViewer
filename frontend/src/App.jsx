@@ -7,7 +7,8 @@ function App() {
 
   const titleInputRef = useRef(null);         // Texto do título
   const titlePositionRef = useRef(null);        // Posição para inserir a página com título
-  
+  const fontInputRef = useRef(null);           // Fonte para o título
+
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Função para buscar e renderizar o PDF usando PDF.js
@@ -138,6 +139,7 @@ function App() {
    const handleAddPageTitle = async () => {
     const title = titleInputRef.current.value;
     const position = titlePositionRef.current.value;
+    const fontChoice = fontInputRef.current.value;
     if (!title) {
       alert("Por favor, insira o título da nova página.");
       return;
@@ -146,7 +148,7 @@ function App() {
       const res = await fetch('/pdf/addPageTitle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, position }),
+        body: JSON.stringify({ title, position, font: fontChoice}),
       });
       const data = await res.json();
       alert(data.message);
@@ -181,17 +183,11 @@ function App() {
         <button onClick={handleDownload}>Download PDF</button>
 
         {/* Controles para adicionar uma página com título */}
-        <input
-          type="text"
-          ref={titleInputRef}
-          placeholder="Título da Página"
-        />
-        <input
-          type="number"
-          ref={titlePositionRef}
-          placeholder="Posição (opcional) para Título"
-        />
+        <input type="text" ref={titleInputRef} placeholder="Título da Página" />
+        <input type="number" ref={titlePositionRef} placeholder="Posição (opcional) para Título" />
+        <input type="text" ref={fontInputRef} placeholder="Fonte (ex: helvetica, timesroman, courier)" />
         <button onClick={handleAddPageTitle}>Adicionar Página com Título</button>
+
       </section>
       <section id="pdfContainer" ref={pdfContainerRef}>
         Carregando PDF...

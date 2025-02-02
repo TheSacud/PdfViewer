@@ -1,7 +1,7 @@
 // server.js
 const express = require('express');
 const multer = require('multer');
-const { PDFDocument, rgb } = require('pdf-lib');
+const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
 const fs = require('fs');
 const path = require('path');
 
@@ -39,13 +39,13 @@ app.post('/pdf/reset', async (req, res) => {
  * Endpoint para adicionar uma nova página com um título em uma posição específica.
  * O endpoint espera receber um JSON com os campos:
  *   - title: (string) o texto que será exibido na nova página;
- *   - position: (number) a posição onde a nova página deverá ser inserida (opcional).
+ *   - position: (number) a posição onde a nova página deverá ser inserida (opcional);
+ *   - font: (string) o nome da fonte a ser usada (opcional). Valores aceitáveis: "helvetica", "timesroman", "courier", "symbol", "zapfdingbats".
  *
  * Se currentPdfDoc não estiver inicializado, ele será criado automaticamente.
  */
 app.post('/pdf/addPageTitle', async (req, res) => {
-  // Obtém o título e a posição do corpo da requisição
-  const { title, position } = req.body;
+  const { title, position, font } = req.body;
   
   // Se o PDF atual não existe, cria-o automaticamente
   if (!currentPdfDoc) {
@@ -56,28 +56,59 @@ app.post('/pdf/addPageTitle', async (req, res) => {
   const pageWidth = 612;
   const pageHeight = 792;
   
-  // Determina a posição de inserção:
-  // Se position for um número válido, converte para inteiro; caso contrário, insere no final.
+  // Determina a posição de inserção
   let insertPos = parseInt(position);
   if (isNaN(insertPos) || insertPos < 0 || insertPos > currentPdfDoc.getPageCount()) {
     insertPos = currentPdfDoc.getPageCount();
   }
   
   // Insere a nova página na posição desejada.
-  // A função insertPage permite especificar as dimensões da página.
   const newPage = currentPdfDoc.insertPage(insertPos, [pageWidth, pageHeight]);
   
-  // Define o texto do título. Você pode ajustar a posição, o tamanho e a cor conforme necessário.
-  // Neste exemplo, o título é desenhado a 50 unidades do lado esquerdo e 750 do rodapé.
-  newPage.drawText(title || 'Título', {
-    x: 50,
+  // Seleciona a fonte com base no parâmetro recebido (default: Helvetica)
+  let fontChoice = (font || 'helvetica').toLowerCase();
+  let embeddedFont;
+  try {
+    if (fontChoice === 'timesroman') {
+      embeddedFont = await currentPdfDoc.embedFont(StandardFonts.TimesRoman);
+    } else if (fontChoice === 'courier') {
+      embeddedFont = await currentPdfDoc.embedFont(StandardFonts.Courier);
+    } else if (fontChoice === 'symbol') {
+      embeddedFont = await currentPdfDoc.embedFont(StandardFonts.Symbol);
+    } else if (fontChoice === 'zapfdingbats') {
+      embeddedFont = await currentPdfDoc.embedFont(StandardFonts.ZapfDingbats);
+    } else {
+      // Padrão para Helvetica
+      embeddedFont = await currentPdfDoc.embedFont(StandardFonts.Helvetica);
+    }
+  } catch (e) {
+    console.error("Erro ao embutir a fonte, usando Helvetica como fallback.", e);
+    embeddedFont = await currentPdfDoc.embedFont(StandardFonts.Helvetica);
+    fontChoice = 'helvetica';
+  }
+  
+  // Configura o tamanho do texto
+  const fontSize = 24;
+  const effectiveTitle = title || "Título";
+  
+  // Calcula a largura do texto e centraliza horizontalmente
+  const textWidth = embeddedFont.widthOfTextAtSize(effectiveTitle, fontSize);
+  const xPos = (pageWidth - textWidth) / 2;
+  
+  // Desenha o texto na nova página
+  newPage.drawText(effectiveTitle, {
+    x: xPos,
     y: pageHeight - 50,  // Aproximadamente 50 unidades abaixo do topo
-    size: 24,
+    size: fontSize,
+    font: embeddedFont,
     color: rgb(0, 0, 0),
   });
   
-  res.send({ message: `Página com título "${title}" adicionada na posição ${insertPos}.` });
+  res.send({ 
+    message: `Página com título "${effectiveTitle}" adicionada na posição ${insertPos} utilizando a fonte "${fontChoice}".`
+  });
 });
+
 
 
 /**

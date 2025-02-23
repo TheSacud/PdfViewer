@@ -1,7 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-
 function App() {
   const pdfContainerRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -19,38 +17,35 @@ function App() {
     pdfContainer.innerHTML = 'Carregando PDF...';
 
     try {
-      const res = await fetch(`${API_URL}/pdf`);
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/pdf`);
       if (!res.ok) {
         pdfContainer.innerHTML = 'Nenhum PDF disponível.';
         return;
       }
 
       const pdfData = await res.arrayBuffer();
-      const header = new TextDecoder().decode(pdfData.slice(0, 5));
-      // Opcional: console.log('Cabeçalho do PDF:', header);
-
       const loadingTask = window.pdfjsLib.getDocument({ data: pdfData });
       loadingTask.promise.then(
         (pdf) => {
-          pdfContainer.innerHTML = ''; // Limpa o container
+          pdfContainer.innerHTML = '';
           console.log('Número de páginas no PDF:', pdf.numPages);
 
           for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
             pdf.getPage(pageNum).then((page) => {
               const scale = 1.0;
               const viewport = page.getViewport({ scale });
-              // Cria um container para a página
+              
               const pageContainer = document.createElement('div');
               pageContainer.style.position = 'relative';
               pageContainer.style.marginBottom = '20px';
 
-              // Cria o canvas para renderizar a página
               const canvas = document.createElement('canvas');
               canvas.height = viewport.height;
               canvas.width = viewport.width;
               canvas.style.display = 'block';
               canvas.style.position = 'relative';
               canvas.style.zIndex = '1';
+              
               const context = canvas.getContext('2d');
               const renderContext = {
                 canvasContext: context,
@@ -58,18 +53,13 @@ function App() {
               };
               page.render(renderContext);
 
-              // Cria o elemento para exibir o número da página
               const pageNumberElem = document.createElement('div');
               pageNumberElem.innerText = 'Página ' + pageNum;
               pageNumberElem.classList.add('page-number');
 
-              // Adiciona o canvas e o número ao container da página
               pageContainer.appendChild(canvas);
               pageContainer.appendChild(pageNumberElem);
-              // Adiciona o container da página ao container geral do PDF
               pdfContainer.appendChild(pageContainer);
-
-              console.log('Adicionada página ' + pageNum);
             });
           }
         },
@@ -91,25 +81,32 @@ function App() {
 
   // Handler para inserir um PDF no documento atual
   const handleUpload = async () => {
-    const fileInput = fileInputRef.current;
-    if (!fileInput.files || fileInput.files.length === 0) {
-      alert('Selecione um arquivo PDF.');
-      return;
+    try {
+      const fileInput = fileInputRef.current;
+      if (!fileInput.files || fileInput.files.length === 0) {
+        alert('Selecione um arquivo PDF.');
+        return;
+      }
+      const position = positionInputRef.current.value;
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+      formData.append('position', position);
+      
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/pdf/insert`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      const data = await res.json();
+      alert(data.message);
+      
+      fileInput.value = '';
+      positionInputRef.current.value = '';
+      setRefreshTrigger((prev) => prev + 1);
+    } catch (error) {
+      console.error('Erro no upload:', error);
+      alert('Erro ao fazer upload do PDF.');
     }
-    const position = positionInputRef.current.value;
-    const formData = new FormData();
-    formData.append('file', fileInput.files[0]);
-    formData.append('position', position);
-    const res = await fetch(`${API_URL}/pdf/insert`, {
-      method: 'POST',
-      body: formData,
-    });
-    const data = await res.json();
-    alert(data.message);
-    // Limpa os inputs
-    fileInput.value = '';
-    positionInputRef.current.value = '';
-    setRefreshTrigger((prev) => prev + 1);
   };
 
   // Handler para atualizar a visualização do PDF
@@ -120,54 +117,55 @@ function App() {
   // Novo handler para download do PDF
   const handleDownload = async () => {
     try {
-      const response = await fetch(`${API_URL}/download`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/download`, {
         method: 'GET',
       });
 
       if (!response.ok) throw new Error('Erro ao baixar PDF');
 
       const blob = await response.blob();
-      
-      // Criar um link temporário para download
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = downloadUrl;
-      link.setAttribute('download', 'documento.pdf'); // Nome fixo do arquivo
+      link.setAttribute('download', 'documento.pdf');
       document.body.appendChild(link);
       link.click();
-      
-      // Limpar
       document.body.removeChild(link);
       window.URL.revokeObjectURL(downloadUrl);
 
     } catch (error) {
       console.error('Erro no download:', error);
+      alert('Erro ao fazer download do PDF.');
     }
   };
 
    // Handler para adicionar uma nova página com título
    const handleAddPageTitle = async () => {
-    const title = titleInputRef.current.value;
-    const position = titlePositionRef.current.value;
-    const fontChoice = fontInputRef.current.value;
-    if (!title) {
-      alert("Por favor, insira o título da nova página.");
-      return;
-    }
     try {
-      const res = await fetch(`${API_URL}/pdf/addPageTitle`, {
+      const title = titleInputRef.current.value;
+      const position = titlePositionRef.current.value;
+      const fontChoice = fontInputRef.current.value;
+      
+      if (!title) {
+        alert("Por favor, insira o título da nova página.");
+        return;
+      }
+
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/pdf/addPageTitle`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, position, font: fontChoice}),
+        body: JSON.stringify({ title, position, font: fontChoice }),
       });
+
       const data = await res.json();
       alert(data.message);
-      // Limpa os inputs para título
+      
       titleInputRef.current.value = '';
       titlePositionRef.current.value = '';
       setRefreshTrigger((prev) => prev + 1);
     } catch (error) {
       console.error("Erro ao adicionar página com título:", error);
+      alert("Erro ao adicionar página com título.");
     }
   };
   

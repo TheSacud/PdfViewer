@@ -126,9 +126,19 @@ function App() {
 
       if (!response.ok) throw new Error('Erro ao baixar PDF');
 
-      // Usar window.location em vez de blob
-      const downloadUrl = `${API_URL}/download`;
-      window.location.href = downloadUrl;
+      const blob = await response.blob();
+      
+      // Criar um link temporário para download
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.setAttribute('download', 'documento.pdf'); // Nome fixo do arquivo
+      document.body.appendChild(link);
+      link.click();
+      
+      // Limpar
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
 
     } catch (error) {
       console.error('Erro no download:', error);

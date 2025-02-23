@@ -8,6 +8,7 @@ const cors = require('cors');
 
 const app = express();
 const port = process.env.PORT || 3000;
+const host = process.env.HOST || '13.38.24.191';  // Alteração importante para AWS
 
 // Middleware para servir arquivos estáticos (front-end)
 app.use(express.static('public'));
@@ -185,20 +186,25 @@ app.get('/pdf', async (req, res) => {
  */
 app.get('/download', async (req, res) => {
   if (!currentPdfDoc) {
-    return res.status(404).send('Nenhum PDF disponível.');
+    return res.status(404).json({ error: 'Nenhum PDF disponível.' });
   }
+
   try {
     const pdfBytes = await currentPdfDoc.save();
     console.log('Tamanho do PDF:', pdfBytes.byteLength);
-    res.set({
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': 'attachment; filename="output.pdf"'
-    });
-    // Converte o Uint8Array para Buffer antes de enviar
-    res.send(Buffer.from(pdfBytes));
+
+    // Headers mais específicos
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Length', pdfBytes.byteLength);
+    res.setHeader('Content-Disposition', 'attachment; filename="documento.pdf"');
+    res.setHeader('Cache-Control', 'no-cache');
+    
+    // Enviar o buffer
+    res.end(Buffer.from(pdfBytes));
+
   } catch (error) {
     console.error('Erro ao gerar PDF:', error);
-    res.status(500).send('Erro ao gerar PDF.');
+    res.status(500).json({ error: 'Erro ao gerar PDF.' });
   }
 });
 

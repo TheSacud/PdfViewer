@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
 function App() {
   const pdfContainerRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -17,7 +19,7 @@ function App() {
     pdfContainer.innerHTML = 'Carregando PDF...';
 
     try {
-      const res = await fetch('/pdf');
+      const res = await fetch(`${API_URL}/pdf`);
       if (!res.ok) {
         pdfContainer.innerHTML = 'Nenhum PDF disponível.';
         return;
@@ -98,7 +100,7 @@ function App() {
     const formData = new FormData();
     formData.append('file', fileInput.files[0]);
     formData.append('position', position);
-    const res = await fetch('/pdf/insert', {
+    const res = await fetch(`${API_URL}/pdf/insert`, {
       method: 'POST',
       body: formData,
     });
@@ -118,7 +120,7 @@ function App() {
   // Novo handler para download do PDF
   const handleDownload = async () => {
     try {
-      const res = await fetch('/download');
+      const res = await fetch(`${API_URL}/download`);
       if (!res.ok) {
         alert('Erro ao baixar o PDF');
         return;
@@ -145,7 +147,7 @@ function App() {
       return;
     }
     try {
-      const res = await fetch('/pdf/addPageTitle', {
+      const res = await fetch(`${API_URL}/pdf/addPageTitle`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, position, font: fontChoice}),

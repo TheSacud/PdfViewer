@@ -4,13 +4,21 @@ const multer = require('multer');
 const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
 const fs = require('fs');
 const path = require('path');
+const cors = require('cors');
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
+const host = process.env.HOST || '0.0.0.0';  // Alteração importante para AWS
 
 // Middleware para servir arquivos estáticos (front-end)
 app.use(express.static('public'));
 app.use(express.json());
+
+// Adicionar CORS para permitir requisições do frontend
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  credentials: true
+}));
 
 // Configuração do multer para upload de arquivos
 const upload = multer({ dest: 'uploads/' });
@@ -109,8 +117,6 @@ app.post('/pdf/addPageTitle', async (req, res) => {
   });
 });
 
-
-
 /**
  * Endpoint para inserir um PDF (ou suas páginas) no documento atual.
  * Se o documento atual ainda não foi criado, ele será inicializado automaticamente.
@@ -197,6 +203,6 @@ app.get('/download', async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`Servidor rodando em http://localhost:${port}`);
+app.listen(port, host, () => {
+  console.log(`Servidor rodando em http://${host}:${port}`);
 });

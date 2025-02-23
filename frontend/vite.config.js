@@ -7,14 +7,14 @@ export default defineConfig({
     proxy: {
       // Todas as requisições que comecem com /pdf serão redirecionadas para o backend.
       '/pdf': {
-        target: 'http://localhost:3000',
+        target: process.env.VITE_API_URL || 'http://localhost:3000',
         changeOrigin: true,
-        secure: false,
+        secure: true,
       },
       '/download': {
-        target: 'http://localhost:3000',
+        target: process.env.VITE_API_URL || 'http://localhost:3000',
         changeOrigin: true,
-        secure: false,
+        secure: true,
       }
       // Se preferir, você também pode definir proxies para endpoints específicos, por exemplo:
       // '/pdf/init': { target: 'http://localhost:3000', changeOrigin: true, secure: false },

@@ -8,7 +8,6 @@ const cors = require('cors');
 
 const app = express();
 const port = process.env.PORT || 3000;
-const host = process.env.HOST || '13.38.24.191';  // Alteração importante para AWS
 
 // Middleware para servir arquivos estáticos (front-end)
 app.use(express.static('public'));
@@ -203,6 +202,6 @@ app.get('/download', async (req, res) => {
   }
 });
 
-app.listen(port, host, () => {
-  console.log(`Servidor rodando em http://${host}:${port}`);
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Servidor rodando na porta ${port}`);
 });

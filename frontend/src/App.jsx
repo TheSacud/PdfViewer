@@ -122,63 +122,51 @@ function App() {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/download`, {
         method: 'GET',
         headers: {
-          'Accept': 'application/pdf',
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
+          'Accept': 'application/pdf'
         }
       });
 
-      console.log('📋 Headers da resposta:', {
-        contentType: response.headers.get('content-type'),
-        contentLength: response.headers.get('content-length'),
-        contentDisposition: response.headers.get('content-disposition')
+      // Log dos headers para debug
+      const headers = {};
+      response.headers.forEach((value, key) => {
+        headers[key] = value;
       });
+      console.log('📋 Headers da resposta:', headers);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      // Método 1: Usando Blob
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/pdf')) {
+        throw new Error(`Tipo de conteúdo inválido: ${contentType}`);
+      }
+
+      // Ler resposta como blob
       const blob = await response.blob();
       console.log('📊 Tamanho do blob:', blob.size);
-      console.log('📄 Tipo do blob:', blob.type);
 
-      if (blob.size < 1000000) { // Se menor que 1MB
-        console.warn('⚠️ Arquivo parece estar truncado!');
+      if (blob.size === 0) {
+        throw new Error('PDF vazio recebido');
       }
 
-      // Método alternativo: usar window.open
-      const downloadUrl = window.URL.createObjectURL(blob);
-      console.log('🔗 URL gerada:', downloadUrl);
+      // Criar e clicar no link de download
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `documento_${Date.now()}.pdf`;
+      document.body.appendChild(link);
+      link.click();
 
-      // Tentar ambos os métodos de download
-      try {
-        // Método 1: Link tradicional
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.download = `documento_${Date.now()}.pdf`;
-        document.body.appendChild(link);
-        console.log('📥 Tentando download via link...');
-        link.click();
-        document.body.removeChild(link);
-      } catch (err) {
-        console.error('❌ Erro no método 1:', err);
-        
-        // Método 2: window.open
-        console.log('📥 Tentando download via window.open...');
-        window.open(downloadUrl, '_blank');
-      }
-
-      // Limpar URL após um pequeno delay
+      // Limpar recursos
       setTimeout(() => {
-        window.URL.revokeObjectURL(downloadUrl);
-        console.log('🧹 URL do blob liberada');
-      }, 1000);
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }, 100);
 
     } catch (error) {
-      console.error('❌ Erro detalhado no download:', error);
-      console.error('Stack:', error.stack);
-      alert('Erro ao fazer download do PDF. Verifique o console para mais detalhes.');
+      console.error('❌ Erro no download:', error);
+      alert(`Erro ao fazer download do PDF: ${error.message}`);
     }
   };
 

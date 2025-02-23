@@ -200,44 +200,28 @@ app.get('/download', async (req, res) => {
     });
     
     console.log(`📊 Tamanho do PDF gerado: ${pdfBytes.length} bytes`);
-    console.log(`📄 Número de páginas: ${currentPdfDoc.getPageCount()}`);
 
-    // Headers
-    const headers = {
+    // Importante: Limpar quaisquer headers anteriores
+    res.removeHeader('Content-Type');
+    res.removeHeader('Content-Disposition');
+    
+    // Configurar headers corretos
+    res.set({
       'Content-Type': 'application/pdf',
       'Content-Length': pdfBytes.length,
       'Content-Disposition': 'attachment; filename="documento.pdf"',
-      'Transfer-Encoding': 'chunked',
-      'Cache-Control': 'no-cache',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
       'Pragma': 'no-cache',
-      'Connection': 'keep-alive'
-    };
-
-    console.log('📋 Headers configurados:', headers);
-
-    res.writeHead(200, headers);
-
-    // Enviar como stream
-    console.log('📤 Iniciando envio do stream...');
-    const buffer = Buffer.from(pdfBytes);
-    const stream = require('stream');
-    const bufferStream = new stream.PassThrough();
-    
-    bufferStream.on('error', (error) => {
-      console.error('❌ Erro no stream:', error);
+      'Expires': '0'
     });
 
-    bufferStream.on('end', () => {
-      console.log('✅ Stream finalizado com sucesso');
-    });
-
-    bufferStream.end(buffer);
-    bufferStream.pipe(res);
+    // Enviar o buffer diretamente
+    console.log('📤 Enviando PDF...');
+    return res.send(Buffer.from(pdfBytes));
 
   } catch (error) {
-    console.error('❌ Erro detalhado:', error);
-    console.error('Stack:', error.stack);
-    res.status(500).json({ 
+    console.error('❌ Erro:', error);
+    return res.status(500).json({ 
       error: 'Erro ao gerar PDF',
       details: error.message 
     });

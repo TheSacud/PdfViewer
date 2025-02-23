@@ -8,7 +8,7 @@ const cors = require('cors');
 
 const app = express();
 const port = process.env.PORT || 3000;
-const host = process.env.HOST || '0.0.0.0';  // Alteração importante para AWS
+const host = process.env.HOST || '13.38.24.191';  // Alteração importante para AWS
 
 // Middleware para servir arquivos estáticos (front-end)
 app.use(express.static('public'));
@@ -16,7 +16,7 @@ app.use(express.json());
 
 // Adicionar CORS para permitir requisições do frontend
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: 'http://13.38.24.191' || 'http://localhost:5173' ,
   credentials: true
 }));
 

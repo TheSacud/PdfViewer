@@ -8,7 +8,7 @@ const cors = require('cors');
 
 const app = express();
 const port = process.env.PORT || 3000;
-const host = process.env.HOST || '13.38.24.191';  // Alteração importante para AWS
+const host = process.env.HOST || '13.38.24.191.nip.io';  // Alteração importante para AWS
 
 // Middleware para servir arquivos estáticos (front-end)
 app.use(express.static('public'));
@@ -16,7 +16,7 @@ app.use(express.json());
 
 // Adicionar CORS para permitir requisições do frontend
 app.use(cors({
-  origin: 'http://13.38.24.191' || 'http://localhost:5173' ,
+  origin:  'http://localhost:5173' || 'http://13.38.24.191.nip.io',
   credentials: true
 }));
 
@@ -185,41 +185,58 @@ app.get('/pdf', async (req, res) => {
  * Endpoint para download do PDF atual.
  */
 app.get('/download', async (req, res) => {
+  console.log('📥 Iniciando download do PDF');
+  
   if (!currentPdfDoc) {
+    console.log('❌ Nenhum PDF disponível');
     return res.status(404).json({ error: 'Nenhum PDF disponível.' });
   }
 
   try {
-    // Verificar se o PDF é válido antes de salvar
-    console.log('PDF Pages:', currentPdfDoc.getPageCount());
-    
+    console.log('🔄 Gerando PDF...');
     const pdfBytes = await currentPdfDoc.save({
-      useObjectStreams: false // Tenta sem streams de objetos
+      useObjectStreams: false,
+      addDefaultPage: false
     });
     
-    console.log('PDF gerado com sucesso');
-    console.log('Tamanho do PDF:', pdfBytes.byteLength);
-    console.log('Primeiros 50 bytes:', Buffer.from(pdfBytes).slice(0, 50).toString('hex'));
+    console.log(`📊 Tamanho do PDF gerado: ${pdfBytes.length} bytes`);
+    console.log(`📄 Número de páginas: ${currentPdfDoc.getPageCount()}`);
 
-    // Verificar se começa com a assinatura PDF correta (%PDF-)
-    const startBytes = Buffer.from(pdfBytes).slice(0, 5).toString();
-    console.log('Início do PDF:', startBytes);
+    // Headers
+    const headers = {
+      'Content-Type': 'application/pdf',
+      'Content-Length': pdfBytes.length,
+      'Content-Disposition': 'attachment; filename="documento.pdf"',
+      'Transfer-Encoding': 'chunked',
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache',
+      'Connection': 'keep-alive'
+    };
+
+    console.log('📋 Headers configurados:', headers);
+
+    res.writeHead(200, headers);
+
+    // Enviar como stream
+    console.log('📤 Iniciando envio do stream...');
+    const buffer = Buffer.from(pdfBytes);
+    const stream = require('stream');
+    const bufferStream = new stream.PassThrough();
     
-    if (!startBytes.startsWith('%PDF-')) {
-      throw new Error('PDF inválido gerado');
-    }
+    bufferStream.on('error', (error) => {
+      console.error('❌ Erro no stream:', error);
+    });
 
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Length', pdfBytes.byteLength);
-    res.setHeader('Content-Disposition', 'attachment; filename="documento.pdf"');
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
+    bufferStream.on('end', () => {
+      console.log('✅ Stream finalizado com sucesso');
+    });
 
-    res.end(Buffer.from(pdfBytes));
+    bufferStream.end(buffer);
+    bufferStream.pipe(res);
 
   } catch (error) {
-    console.error('Erro detalhado:', error);
+    console.error('❌ Erro detalhado:', error);
+    console.error('Stack:', error.stack);
     res.status(500).json({ 
       error: 'Erro ao gerar PDF',
       details: error.message 

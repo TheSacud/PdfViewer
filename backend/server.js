@@ -190,21 +190,40 @@ app.get('/download', async (req, res) => {
   }
 
   try {
-    const pdfBytes = await currentPdfDoc.save();
+    // Verificar se o PDF é válido antes de salvar
+    console.log('PDF Pages:', currentPdfDoc.getPageCount());
+    
+    const pdfBytes = await currentPdfDoc.save({
+      useObjectStreams: false // Tenta sem streams de objetos
+    });
+    
+    console.log('PDF gerado com sucesso');
     console.log('Tamanho do PDF:', pdfBytes.byteLength);
+    console.log('Primeiros 50 bytes:', Buffer.from(pdfBytes).slice(0, 50).toString('hex'));
 
-    // Headers mais específicos
+    // Verificar se começa com a assinatura PDF correta (%PDF-)
+    const startBytes = Buffer.from(pdfBytes).slice(0, 5).toString();
+    console.log('Início do PDF:', startBytes);
+    
+    if (!startBytes.startsWith('%PDF-')) {
+      throw new Error('PDF inválido gerado');
+    }
+
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Length', pdfBytes.byteLength);
     res.setHeader('Content-Disposition', 'attachment; filename="documento.pdf"');
-    res.setHeader('Cache-Control', 'no-cache');
-    
-    // Enviar o buffer
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     res.end(Buffer.from(pdfBytes));
 
   } catch (error) {
-    console.error('Erro ao gerar PDF:', error);
-    res.status(500).json({ error: 'Erro ao gerar PDF.' });
+    console.error('Erro detalhado:', error);
+    res.status(500).json({ 
+      error: 'Erro ao gerar PDF',
+      details: error.message 
+    });
   }
 });
 

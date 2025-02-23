@@ -120,18 +120,16 @@ function App() {
   // Novo handler para download do PDF
   const handleDownload = async () => {
     try {
-      const res = await fetch(`${API_URL}/download`);
-      if (!res.ok) {
-        alert('Erro ao baixar o PDF');
-        return;
-      }
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'output.pdf';
-      a.click();
-      window.URL.revokeObjectURL(url);
+      const response = await fetch(`${API_URL}/download`, {
+        method: 'GET',
+      });
+
+      if (!response.ok) throw new Error('Erro ao baixar PDF');
+
+      // Usar window.location em vez de blob
+      const downloadUrl = `${API_URL}/download`;
+      window.location.href = downloadUrl;
+
     } catch (error) {
       console.error('Erro no download:', error);
     }

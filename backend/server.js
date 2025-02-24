@@ -39,7 +39,7 @@ app.post('/pdf/init', async (req, res) => {
  * Endpoint para reiniciar/limpar o PDF atual.
  */
 app.post('/pdf/reset', async (req, res) => {
-  currentPdfDoc = await PDFDocument.create();
+  currentPdfDoc = null;
   res.send({ message: "PDF reiniciado com sucesso!" });
 });
 

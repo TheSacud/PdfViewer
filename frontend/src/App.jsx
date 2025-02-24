@@ -200,6 +200,20 @@ function App() {
     }
   };
   
+  // Novo handler para reiniciar o PDF
+  const handleReset = async () => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/pdf/reset`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      alert(data.message);
+      setRefreshTrigger((prev) => prev + 1);
+    } catch (error) {
+      console.error('Erro ao reiniciar PDF:', error);
+      alert('Erro ao reiniciar o PDF.');
+    }
+  };
 
   return (
     <div>
@@ -226,6 +240,9 @@ function App() {
         <input type="number" ref={titlePositionRef} placeholder="Posição (opcional) para Título" />
         <input type="text" ref={fontInputRef} placeholder="Fonte (ex: helvetica, timesroman, courier)" />
         <button onClick={handleAddPageTitle}>Adicionar Página com Título</button>
+
+        {/* Novo botão para reiniciar */}
+        <button onClick={handleReset}>Reiniciar PDF</button>
 
       </section>
       <section id="pdfContainer" ref={pdfContainerRef}>

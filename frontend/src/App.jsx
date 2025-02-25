@@ -11,16 +11,22 @@ function App() {
 
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [scrollToPage, setScrollToPage] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // URL da API
+  const API_URL = import.meta.env.VITE_API_URL;
 
   // Função para buscar e renderizar o PDF usando PDF.js
   const refreshPdf = async () => {
     const pdfContainer = pdfContainerRef.current;
     pdfContainer.innerHTML = 'Carregando PDF...';
+    setIsLoading(true);
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/pdf`);
+      const res = await fetch(`${API_URL}/pdf`);
       if (!res.ok) {
         pdfContainer.innerHTML = 'Nenhum PDF disponível.';
+        setIsLoading(false);
         return;
       }
 
@@ -66,21 +72,24 @@ function App() {
               // Verificar se devemos rolar para esta página
               if (pageNum === scrollToPage) {
                 setTimeout(() => {
-                  pageContainer.scrollIntoView();
+                  pageContainer.scrollIntoView({ block: 'start' });
                   setScrollToPage(null); // Limpa depois de rolar
-                }, 100);
+                }, 300);
               }
             });
           }
+          setIsLoading(false);
         },
         (err) => {
           console.error('Erro ao carregar PDF:', err);
           pdfContainer.innerHTML = 'Erro ao carregar PDF.';
+          setIsLoading(false);
         }
       );
     } catch (err) {
       console.error('Erro:', err);
       pdfContainer.innerHTML = 'Erro ao carregar PDF.';
+      setIsLoading(false);
     }
   };
 
@@ -92,9 +101,11 @@ function App() {
   // Handler para inserir um PDF no documento atual
   const handleUpload = async () => {
     try {
+      setIsLoading(true);
       const fileInput = fileInputRef.current;
       if (!fileInput.files || fileInput.files.length === 0) {
         alert('Selecione um arquivo PDF.');
+        setIsLoading(false);
         return;
       }
       const position = positionInputRef.current.value;
@@ -102,7 +113,7 @@ function App() {
       formData.append('file', fileInput.files[0]);
       formData.append('position', position);
       
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/pdf/insert`, {
+      const res = await fetch(`${API_URL}/pdf/insert`, {
         method: 'POST',
         body: formData,
       });
@@ -111,43 +122,42 @@ function App() {
       alert(data.message);
       
       // Configura a página para a qual rolar
-      const targetPage = position ? parseInt(position) + 1 : null;
-      if (targetPage) {
-        setScrollToPage(targetPage);
+      if (position !== null && position !== undefined && position !== '') {
+        const pos = parseInt(position, 10);
+        if (!isNaN(pos)) {
+          console.log(`Definindo scroll para a página ${pos + 1}`);
+          setScrollToPage(pos + 1);
+        }
       }
       
       fileInput.value = '';
       positionInputRef.current.value = '';
-      setRefreshTrigger((prev) => prev + 1);
+      setRefreshTrigger(prev => prev + 1);
     } catch (error) {
       console.error('Erro no upload:', error);
       alert('Erro ao fazer upload do PDF.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   // Handler para atualizar a visualização do PDF
   const handleRefresh = () => {
-    setRefreshTrigger((prev) => prev + 1);
+    setRefreshTrigger(prev => prev + 1);
   };
 
-  // Novo handler para download do PDF
+  // Handler para download do PDF
   const handleDownload = async () => {
     try {
       console.log('🔄 Iniciando download...');
+      setIsLoading(true);
       
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/download`, {
+      const response = await fetch(`${API_URL}/download`, {
         method: 'GET',
         headers: {
           'Accept': 'application/pdf'
         }
       });
-
-      // Log dos headers para debug
-      const headers = {};
-      response.headers.forEach((value, key) => {
-        headers[key] = value;
-      });
-      console.log('📋 Headers da resposta:', headers);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -183,22 +193,26 @@ function App() {
     } catch (error) {
       console.error('❌ Erro no download:', error);
       alert(`Erro ao fazer download do PDF: ${error.message}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-   // Handler para adicionar uma nova página com título
-   const handleAddPageTitle = async () => {
+  // Handler para adicionar uma nova página com título
+  const handleAddPageTitle = async () => {
     try {
+      setIsLoading(true);
       const title = titleInputRef.current.value;
       const position = titlePositionRef.current.value;
       const fontChoice = fontInputRef.current.value;
       
       if (!title) {
         alert("Por favor, insira o título da nova página.");
+        setIsLoading(false);
         return;
       }
 
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/pdf/addPageTitle`, {
+      const res = await fetch(`${API_URL}/pdf/addPageTitle`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, position, font: fontChoice }),
@@ -209,59 +223,92 @@ function App() {
       
       titleInputRef.current.value = '';
       titlePositionRef.current.value = '';
-      setRefreshTrigger((prev) => prev + 1);
+      
+      if (position !== null && position !== undefined && position !== '') {
+        const pos = parseInt(position, 10);
+        if (!isNaN(pos)) {
+          setScrollToPage(pos + 1);
+        }
+      }
+      
+      setRefreshTrigger(prev => prev + 1);
     } catch (error) {
       console.error("Erro ao adicionar página com título:", error);
       alert("Erro ao adicionar página com título.");
+    } finally {
+      setIsLoading(false);
     }
   };
   
-  // Novo handler para reiniciar o PDF
+  // Handler para reiniciar o PDF
   const handleReset = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/pdf/reset`, {
+      setIsLoading(true);
+      const res = await fetch(`${API_URL}/pdf/reset`, {
         method: 'POST',
       });
       const data = await res.json();
       alert(data.message);
-      setRefreshTrigger((prev) => prev + 1);
+      setRefreshTrigger(prev => prev + 1);
     } catch (error) {
       console.error('Erro ao reiniciar PDF:', error);
       alert('Erro ao reiniciar o PDF.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div>
-      <header>
+    <div className="pdf-app-container">
+      <header className="app-header">
         <h1>pdfViewer</h1>
         <p>Mesclar, visualizar e editar PDFs de forma simples e elegante</p>
       </header>
-      <section className="controls">
-        {/* Controle para inserir um PDF */}
-        <input type="file" ref={fileInputRef} accept="application/pdf" />
-        <input
-          type="number"
-          ref={positionInputRef}
-          placeholder="Posição (opcional) para Inserir PDF"
-        />
-        <button onClick={handleUpload}>Inserir PDF</button>
-
-        {/* Botões para atualizar visualização e download */}
-        <button onClick={handleRefresh}>Atualizar Visualização</button>
-        <button onClick={handleDownload}>Download PDF</button>
-
-        {/* Controles para adicionar uma página com título */}
-        <input type="text" ref={titleInputRef} placeholder="Título da Página" />
-        <input type="number" ref={titlePositionRef} placeholder="Posição (opcional) para Título" />
-        <input type="text" ref={fontInputRef} placeholder="Fonte (ex: helvetica, timesroman, courier)" />
-        <button onClick={handleAddPageTitle}>Adicionar Página com Título</button>
-
-        {/* Novo botão para reiniciar */}
-        <button onClick={handleReset}>Reiniciar PDF</button>
-
+      
+      <section className={`controls ${isLoading ? 'disabled' : ''}`}>
+        {/* Grupo de controles para inserção de PDF */}
+        <div className="control-group">
+          <h3>Inserir PDF</h3>
+          <div className="input-group">
+            <input type="file" ref={fileInputRef} accept="application/pdf" />
+            <input
+              type="number"
+              ref={positionInputRef}
+              placeholder="Posição (opcional)"
+            />
+            <button onClick={handleUpload} disabled={isLoading} className="inline-button">Inserir</button>
+          </div>
+        </div>
+        
+        {/* Grupo de controles para adição de título */}
+        <div className="control-group">
+          <h3>Adicionar Página com Título</h3>
+          <div className="input-group">
+            <input type="text" ref={titleInputRef} placeholder="Título da Página" />
+            <input type="number" ref={titlePositionRef} placeholder="Posição (opcional)" />
+            <input type="text" ref={fontInputRef} placeholder="Fonte (ex: helvetica)" />
+            <button onClick={handleAddPageTitle} disabled={isLoading} className="inline-button">Adicionar</button>
+          </div>
+        </div>
+        
+        {/* Grupo de controles para operações gerais - formato mais compacto */}
+        <div className="control-group compact">
+          <div className="actions-bar">
+            <button onClick={handleRefresh} disabled={isLoading} className="small-button">
+              Atualizar</button>
+            <button onClick={handleDownload} disabled={isLoading} className="small-button">
+              Download</button>
+            <button onClick={handleReset} disabled={isLoading} className="small-button">
+              Reiniciar</button>
+          </div>
+        </div>
       </section>
-      <section id="pdfContainer" ref={pdfContainerRef}>
+      
+      <section 
+        id="pdfContainer" 
+        ref={pdfContainerRef}
+        className={isLoading ? 'loading' : ''}
+      >
         Carregando PDF...
       </section>
     </div>

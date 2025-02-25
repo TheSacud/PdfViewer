@@ -35,3 +35,4 @@ coverage/
 # Outros
 *.tsbuildinfo
 uploads/
+backend/package-lock.json

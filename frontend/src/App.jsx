@@ -8,16 +8,72 @@ function App() {
   const titleInputRef = useRef(null);         // Texto do título
   const titlePositionRef = useRef(null);        // Posição para inserir a página com título
   const fontInputRef = useRef(null);           // Fonte para o título
+  const passwordInputRef = useRef(null);
 
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [scrollToPage, setScrollToPage] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authError, setAuthError] = useState('');
 
   // URL da API
   const API_URL = import.meta.env.VITE_API_URL;
 
+  // Função para verificar a password
+  const handleAuthentication = async () => {
+    try {
+      setIsLoading(true);
+      setAuthError('');
+      const password = passwordInputRef.current.value;
+      
+      if (!password) {
+        setAuthError('Por favor, introduza a password.');
+        setIsLoading(false);
+        return;
+      }
+      
+      const response = await fetch(`${API_URL}/auth`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password }),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        setIsAuthenticated(true);
+        setRefreshTrigger(prev => prev + 1); // Carregar o PDF após autenticação
+      } else {
+        setAuthError(data.message || 'Password incorreta. Tente novamente.');
+      }
+    } catch (error) {
+      console.error('Erro na autenticação:', error);
+      setAuthError('Erro ao tentar autenticar. Tente novamente.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Função para terminar a sessão
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    if (pdfContainerRef.current) {
+      pdfContainerRef.current.innerHTML = 'Autenticação necessária para visualizar o PDF.';
+    }
+  };
+
   // Função para buscar e renderizar o PDF usando PDF.js
   const refreshPdf = async () => {
+    // Se não estiver autenticado, não carrega o PDF
+    if (!isAuthenticated) {
+      if (pdfContainerRef.current) {
+        pdfContainerRef.current.innerHTML = 'Autenticação necessária para visualizar o PDF.';
+      }
+      return;
+    }
+
     const pdfContainer = pdfContainerRef.current;
     pdfContainer.innerHTML = 'Carregando PDF...';
     setIsLoading(true);
@@ -265,52 +321,83 @@ function App() {
         <p>Mesclar, visualizar e editar PDFs de forma simples e elegante</p>
       </header>
       
-      <section className={`controls ${isLoading ? 'disabled' : ''}`}>
-        {/* Grupo de controles para inserção de PDF */}
-        <div className="control-group">
-          <h3>Inserir PDF</h3>
+      {!isAuthenticated ? (
+        // Tela de autenticação
+        <section className="auth-container">
+          <h3>Autenticação Necessária</h3>
           <div className="input-group">
-            <input type="file" ref={fileInputRef} accept="application/pdf" />
-            <input
-              type="number"
-              ref={positionInputRef}
-              placeholder="Posição (opcional)"
+            <input 
+              type="password" 
+              ref={passwordInputRef} 
+              placeholder="Introduza a password" 
+              onKeyPress={(e) => e.key === 'Enter' && handleAuthentication()}
             />
-            <button onClick={handleUpload} disabled={isLoading} className="inline-button">Inserir</button>
+            <button onClick={handleAuthentication}>Entrar</button>
           </div>
-        </div>
-        
-        {/* Grupo de controles para adição de título */}
-        <div className="control-group">
-          <h3>Adicionar Página com Título</h3>
-          <div className="input-group">
-            <input type="text" ref={titleInputRef} placeholder="Título da Página" />
-            <input type="number" ref={titlePositionRef} placeholder="Posição (opcional)" />
-            <input type="text" ref={fontInputRef} placeholder="Fonte (ex: helvetica)" />
-            <button onClick={handleAddPageTitle} disabled={isLoading} className="inline-button">Adicionar</button>
-          </div>
-        </div>
-        
-        {/* Grupo de controles para operações gerais - formato mais compacto */}
-        <div className="control-group compact">
-          <div className="actions-bar">
-            <button onClick={handleRefresh} disabled={isLoading} className="small-button">
-              Atualizar</button>
-            <button onClick={handleDownload} disabled={isLoading} className="small-button">
-              Download</button>
-            <button onClick={handleReset} disabled={isLoading} className="small-button">
-              Reiniciar</button>
-          </div>
-        </div>
-      </section>
-      
-      <section 
-        id="pdfContainer" 
-        ref={pdfContainerRef}
-        className={isLoading ? 'loading' : ''}
-      >
-        Carregando PDF...
-      </section>
+          {authError && <p className="error-message">{authError}</p>}
+        </section>
+      ) : (
+        // Interface principal após autenticação
+        <>
+          <section className={`controls ${isLoading ? 'disabled' : ''}`}>
+            {/* Barra de sessão com botão de logout */}
+            <div className="session-bar">
+              <span>Utilizador autenticado</span>
+              <button 
+                onClick={handleLogout} 
+                className="logout-button"
+              >
+                Terminar Sessão
+              </button>
+            </div>
+            
+            {/* Grupo de controles para inserção de PDF */}
+            <div className="control-group">
+              <h3>Inserir PDF</h3>
+              <div className="input-group">
+                <input type="file" ref={fileInputRef} accept="application/pdf" />
+                <input
+                  type="number"
+                  ref={positionInputRef}
+                  placeholder="Posição (opcional)"
+                />
+                <button onClick={handleUpload} disabled={isLoading} className="inline-button">Inserir</button>
+              </div>
+            </div>
+            
+            {/* Grupo de controles para adição de título */}
+            <div className="control-group">
+              <h3>Adicionar Página com Título</h3>
+              <div className="input-group">
+                <input type="text" ref={titleInputRef} placeholder="Título da Página" />
+                <input type="number" ref={titlePositionRef} placeholder="Posição (opcional)" />
+                <input type="text" ref={fontInputRef} placeholder="Fonte (ex: helvetica)" />
+                <button onClick={handleAddPageTitle} disabled={isLoading} className="inline-button">Adicionar</button>
+              </div>
+            </div>
+            
+            {/* Grupo de controles para operações gerais - formato mais compacto */}
+            <div className="control-group compact">
+              <div className="actions-bar">
+                <button onClick={handleRefresh} disabled={isLoading} className="small-button">
+                  Atualizar</button>
+                <button onClick={handleDownload} disabled={isLoading} className="small-button">
+                  Download</button>
+                <button onClick={handleReset} disabled={isLoading} className="small-button">
+                  Reiniciar</button>
+              </div>
+            </div>
+          </section>
+          
+          <section 
+            id="pdfContainer" 
+            ref={pdfContainerRef}
+            className={isLoading ? 'loading' : ''}
+          >
+            Autenticação necessária para visualizar o PDF.
+          </section>
+        </>
+      )}
     </div>
   );
 }

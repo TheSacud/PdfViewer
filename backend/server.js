@@ -26,6 +26,35 @@ const upload = multer({ dest: 'uploads/' });
 // Variável global para armazenar o PDF atual em memória
 let currentPdfDoc = null;
 
+// Configuração de autenticação (em produção, usar métodos mais seguros)
+const CORRECT_PASSWORD = 'zW4ZNB2!xS8oW#Ub';
+
+/**
+ * Endpoint para autenticação
+ */
+app.post('/auth', (req, res) => {
+  const { password } = req.body;
+  
+  if (!password) {
+    return res.status(400).json({ 
+      success: false,
+      message: 'Password não fornecida' 
+    });
+  }
+  
+  if (password === CORRECT_PASSWORD) {
+    return res.json({ 
+      success: true,
+      message: 'Autenticação bem-sucedida'
+    });
+  } else {
+    return res.status(401).json({
+      success: false,
+      message: 'Password incorreta'
+    });
+  }
+});
+
 /**
  * Endpoint para inicializar/criar um PDF vazio.
  * (Opcional: pode ser usado para reiniciar o documento.)

@@ -36,3 +36,4 @@ coverage/
 *.tsbuildinfo
 uploads/
 backend/package-lock.json
+backend/.env

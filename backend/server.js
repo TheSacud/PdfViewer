@@ -1,4 +1,6 @@
 // server.js
+// Carrega variáveis de ambiente do arquivo .env
+require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
 const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
@@ -20,34 +22,43 @@ app.use(cors({
   credentials: true
 }));
 
+// Middleware para logging de requisições
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
+
 // Configuração do multer para upload de arquivos
 const upload = multer({ dest: 'uploads/' });
 
 // Variável global para armazenar o PDF atual em memória
 let currentPdfDoc = null;
 
-// Configuração de autenticação (em produção, usar métodos mais seguros)
-const CORRECT_PASSWORD = 'zW4ZNB2!xS8oW#Ub';
-
 /**
  * Endpoint para autenticação
  */
 app.post('/auth', (req, res) => {
+  console.log('Recebida requisição de autenticação');
+  
   const { password } = req.body;
   
   if (!password) {
+    console.log('Password não fornecida');
     return res.status(400).json({ 
       success: false,
       message: 'Password não fornecida' 
     });
   }
   
-  if (password === CORRECT_PASSWORD) {
+  // Usa a password definida na variável de ambiente
+  if (password === process.env.AUTH_PASSWORD) {
+    console.log('Autenticação bem-sucedida');
     return res.json({ 
       success: true,
       message: 'Autenticação bem-sucedida'
     });
   } else {
+    console.log('Password incorreta');
     return res.status(401).json({
       success: false,
       message: 'Password incorreta'

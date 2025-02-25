@@ -10,6 +10,7 @@ function App() {
   const fontInputRef = useRef(null);           // Fonte para o título
 
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [scrollToPage, setScrollToPage] = useState(null);
 
   // Função para buscar e renderizar o PDF usando PDF.js
   const refreshPdf = async () => {
@@ -36,6 +37,7 @@ function App() {
               const viewport = page.getViewport({ scale });
               
               const pageContainer = document.createElement('div');
+              pageContainer.id = `page-${pageNum}`;  // Adicionar ID para cada página
               pageContainer.style.position = 'relative';
               pageContainer.style.marginBottom = '20px';
 
@@ -60,6 +62,14 @@ function App() {
               pageContainer.appendChild(canvas);
               pageContainer.appendChild(pageNumberElem);
               pdfContainer.appendChild(pageContainer);
+              
+              // Verificar se devemos rolar para esta página
+              if (pageNum === scrollToPage) {
+                setTimeout(() => {
+                  pageContainer.scrollIntoView();
+                  setScrollToPage(null); // Limpa depois de rolar
+                }, 100);
+              }
             });
           }
         },
@@ -99,6 +109,12 @@ function App() {
       
       const data = await res.json();
       alert(data.message);
+      
+      // Configura a página para a qual rolar
+      const targetPage = position ? parseInt(position) + 1 : null;
+      if (targetPage) {
+        setScrollToPage(targetPage);
+      }
       
       fileInput.value = '';
       positionInputRef.current.value = '';
